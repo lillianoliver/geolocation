@@ -3,12 +3,22 @@ pipeline {
     tools{
         maven 'M2_HOME'
     }
+environment {
+    registry = '668278409505.dkr.ecr.us-east-1.amazonaws.com/hello-world'
+    registryCredential = 'Jenkins-ECR'
+    dockerimage = ''
+    }
     stages {
-        stage('Build') {
+        stage('Checkout'){
+            steps{
+                git branch: 'main', url: 'https://github.com/lillianoliver/helloworld_jan_22-2.git'   
+            }
+        }        
+        stage('Code Build') {
             steps {
                 sh 'mvn clean'
-                sh 'mvn install'
-                sh 'mvn package'
+                sh 'mvn install -DskipTests'
+                sh 'mvn package DskipTests'
             }
         }
         stage('Test') {
@@ -16,17 +26,22 @@ pipeline {
                 sh 'mvn test'
             }
         }
-        stage('Deploy') {
+        stage('Build Image') {
             steps {
-                echo 'Deploy Step'
-                sleep 10
+                script{
+                    dockerImage = docker.build registry + ":$BUILD_NUMBER"
+                } 
             }
         }
-        stage('Docker') {
+        stage('Deploy Image') {
             steps {
-                echo 'Image step'
+                script{ 
+                    docker.withRegistry("https://"+registry,"ecr:us-east-1:"+registryCredential) {
+                        dockerImage.push()
+                    }
+                }
             }
-        }
+        }  
     }
 }
 
